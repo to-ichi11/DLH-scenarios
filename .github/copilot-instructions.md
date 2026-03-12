@@ -20,6 +20,7 @@
 - Preserve the 3-player premise and the expected playtime unless the user explicitly wants a redesign.
 - Do not add new rules terminology or replace established terms with English equivalents.
 - When expanding scenes, keep player agency and scene objectives clear.
+- As a highest-priority writing rule for scenario body text, do not let the scenario preempt or dictate a PC's emotions, interpretations, conclusions, or exact lines. Prefer presenting the situation, sensory detail, and pressure, then leave the player's reaction and wording open unless a choice prompt explicitly requires a defined answer.
 
 ## Editing Checks
 - Before changing plot, setting, or character backstory, review related scenario and character-setting files for downstream impact.
