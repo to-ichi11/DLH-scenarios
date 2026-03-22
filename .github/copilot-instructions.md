@@ -26,3 +26,11 @@
 - Before changing plot, setting, or character backstory, review related scenario and character-setting files for downstream impact.
 - If you change mechanics, verify the new values and wording remain consistent within the edited scenario.
 - Prefer minimal edits that preserve the author's voice and layout.
+
+## Subagent Workflow
+- For substantial scenario creation, restructuring, or review work, prefer a staged subagent workflow instead of doing all analysis in one pass.
+- When the task is broad, first use a read-only subagent to gather structure and continuity risks before editing.
+- For scenario polishing, it is appropriate to split review into three roles: editor (structure and redundancy), writer (tone and imagery), and TRPG scenario designer (table flow, player agency, GM usability).
+- When checking believability, causality, or "who could realistically know this?", use a dedicated plausibility-check subagent before rewriting the scene.
+- Use subagent results as review input, then apply only the overlapping or high-confidence findings. Do not mechanically accept every suggestion.
+- Keep subagent use lightweight for small edits. Do not invoke multiple review passes when the user only wants a local wording fix.
