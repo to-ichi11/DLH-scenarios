@@ -20,13 +20,31 @@ let S=load();
 function sessions(){try{let a=JSON.parse(localStorage.getItem(NS+"-sessions"));return Array.isArray(a)&&a.length?a:[{id:"default",title:"セッション1"}]}catch(e){return [{id:"default",title:"セッション1"}]}}
 function save(){try{localStorage.setItem(key(session),JSON.stringify(S))}catch(e){console.warn("保存に失敗",e)}}
 function flash(msg){let f=document.getElementById("flash");f.innerHTML='<div class="note">'+clip(msg)+'</div>';setTimeout(()=>f.textContent="",2300)}
-function change(action,update){let snap=structuredClone?structuredClone(S):JSON.parse(JSON.stringify(S));delete snap.history;S.history=(S.history||[]).slice(-14);S.history.push(snap);update();S.log=(S.log||[]).slice(-199);S.log.push({at:new Date().toLocaleString("ja-JP"),action});save();render();}
+function change(action,update){let snap=typeof structuredClone==="function"?structuredClone(S):JSON.parse(JSON.stringify(S));delete snap.history;S.history=(S.history||[]).slice(-14);S.history.push(snap);update();S.log=(S.log||[]).slice(-199);S.log.push({at:new Date().toLocaleString("ja-JP"),action});save();render();}
 function getFlag(id){return S.flags[id]||D.flags.find(x=>x.id===id)?.initial||""}
 function statusEvt(id){return S.events[id]||"未発生"}
 function loc(id){return D.locations.find(x=>x.id===id)}
 function clue(id){return D.clues.find(x=>x.id===id)}
 function event(id){return D.events.find(x=>x.id===id)}
 function count(arr,fn){return arr.filter(fn).length}
+function canStart(e){
+ if(statusEvt(e.id)!=="未発生")return false;
+ const status=e.location?S.places[e.location]:"未公開";
+ const visited=["訪問","完了"].includes(status);
+ const day=S.slot!=="夜";
+ const previous={memory:"opening",departure:"memory",flight:"departure",guide:"flight",commander:"approach",escape:"commander",lettertruth:"escape",coup:"lettertruth"};
+ if(e.id==="opening")return true;
+ if(previous[e.id])return statusEvt(previous[e.id])==="完了";
+ if(e.id==="approach")return S.phase==="決戦"||statusEvt("secret-visit")==="完了";
+ if(e.id==="riot")return visited&&day&&getFlag("market")==="未発生";
+ if(e.id==="oath")return visited&&day&&getFlag("ration")==="未発生";
+ if(e.id==="port-witness")return visited&&day&&getFlag("witness")==="未遭遇";
+ if(["port-medic","paper-print","clinic-query"].includes(e.id))return visited;
+ if(e.id==="ambush")return S.slot==="夜"&&(getFlag("pursuit")==="尾行中"||getFlag("guideReport")!=="未報告");
+ return Boolean(e.location)&&status!=="未公開"&&S.phase==="展開／王都";
+}
+function cue(e){return '<div class="smalltext muted">発生目安：'+clip(D.eventRules?.[e.id]||"GM判断")+'</div>';}
+
 function pill(status){let cl=/完了|取得|保護|特定|訪問/.test(status)?"done":/未公開|未発生/.test(status)?"locked":/進行|公開|疑惑/.test(status)?"active":"warn";return '<span class="pill '+cl+'">'+clip(status)+'</span>'}
 function title(hint,title,desc,extra=""){return '<div class="heading"><div><div class="eyebrow">'+clip(hint)+'</div><h1>'+clip(title)+'</h1><p>'+clip(desc)+'</p></div>'+extra+'</div>'}
 function btn(name,action,value="",cls="btn"){return '<button class="'+cls+'" data-action="'+action+'" data-value="'+clip(value)+'">'+clip(name)+'</button>'}
@@ -45,7 +63,7 @@ function eventTitle(e){let s=statusEvt(e.id);return '<div class="row wrap"><div>
 function preview(s){return clip(s.replace(/\s+/g," ").slice(0,145))+"…"}
 function renderStory(){
 const e=event(currentEvent)||D.events[0];let status=statusEvt(e.id);const lines=e.text.split(/\n/).filter(x=>x.trim());
-root.innerHTML=title("SCENARIO READER","シナリオ本文","v12.0から収録。進行記録と原稿の表示は独立しています。")+'<div class="grid2" style="grid-template-columns:minmax(235px,320px) minmax(0,1fr)"><div class="board"><input class="search" type="search" placeholder="イベント・本文を検索" data-action="filterStory" value="'+clip(filter)+'">'+D.events.filter(x=>!filter||(x.title+x.text).toLowerCase().includes(filter.toLowerCase())).map(x=>'<button class="nav-button '+(x.id===e.id?"active":"")+'" data-action="openEvent" data-value="'+clip(x.id)+'">'+clip(x.title)+' <small class="muted">｜'+clip(statusEvt(x.id))+'</small></button>').join("")+'</div><div class="board"><div class="row wrap"><h2>'+clip(e.title)+'</h2>'+pill(status)+'</div><div class="actions">'+EVT_STATUS.map(s=>btn(s,"setEvent",e.id+"::"+s,status===s?"btn primary":"btn")).join("")+'</div><div class="sep"></div><div class="reader" aria-label="シナリオ本文">'+lines.map(line=>'<div class="reader-line '+(/^(状況|解説・|エンドチェック|判定|GM処理|人物シーン|初回訪問)/.test(line)?"label":line.startsWith("□")?"check":/^(登場キャラクター|場所：|訪問：|夜間：)/.test(line)?"meta":"")+'">'+clip(line)+'</div>').join("")+'</div></div></div>';
+root.innerHTML=title("SCENARIO READER","シナリオ本文","v12.0から収録。進行記録と原稿の表示は独立しています。")+'<div class="grid2" style="grid-template-columns:minmax(235px,320px) minmax(0,1fr)"><div class="board"><input class="search" type="search" placeholder="イベント・本文を検索" data-action="filterStory" value="'+clip(filter)+'">'+D.events.filter(x=>!filter||(x.title+x.text).toLowerCase().includes(filter.toLowerCase())).map(x=>'<button class="nav-button '+(x.id===e.id?"active":"")+'" data-action="openEvent" data-value="'+clip(x.id)+'">'+clip(x.title)+' <small class="muted">｜'+clip(statusEvt(x.id))+'</small></button>').join("")+'</div><div class="board"><div class="row wrap"><h2>'+clip(e.title)+'</h2>'+pill(status)+(canStart(e)?pill("発生候補"):"")+'</div>'+cue(e)+'<div class="actions">'+EVT_STATUS.map(s=>btn(s,"setEvent",e.id+"::"+s,status===s?"btn primary":"btn")).join("")+'</div><div class="sep"></div><div class="reader" aria-label="シナリオ本文">'+lines.map(line=>'<div class="reader-line '+(/^(状況|解説・|エンドチェック|判定|GM処理|人物シーン|初回訪問)/.test(line)?"label":line.startsWith("□")?"check":/^(登場キャラクター|場所：|訪問：|夜間：)/.test(line)?"meta":"")+'">'+clip(line)+'</div>').join("")+'</div></div></div>';
 }
 function renderLocations(){
 let l=loc(currentLocation)||D.locations[0];let e=D.events.find(x=>x.location===l.id);let st=S.places[l.id];
@@ -54,7 +72,7 @@ root.innerHTML=title("CITY EXPLORATION","王都ロケーション","公開 → �
 }
 function renderEvents(){
 let groups=[["未発生","未着手"],["進行中","進行中"],["完了","完了"],["スキップ","不発生・省略"]];
-root.innerHTML=title("EVENT BOARD","イベント管理","イベントの達成・発生条件はGM判断。未訪問の任意イベントは実施不要です。")+'<div class="status-columns">'+groups.map(([st,label])=>'<div class="status-column"><h3>'+label+'　'+count(D.events,e=>statusEvt(e.id)===st)+'</h3>'+D.events.filter(e=>statusEvt(e.id)===st).map(e=>'<div class="item"><span class="eyebrow">'+clip(e.phase)+'</span><h3>'+clip(e.title)+'</h3><div class="actions">'+btn("本文","openEvent",e.id,"tiny")+(st!=="進行中"?btn("開始","setEvent",e.id+"::進行中","tiny"):"")+(st!=="完了"?btn("完了","setEvent",e.id+"::完了","tiny"):"")+(st!=="スキップ"?btn("省略","setEvent",e.id+"::スキップ","tiny"):"")+'</div></div>').join("")+'</div>').join("")+'</div><p class="footer-note">チャレンジの成否、実際の証言やNPCの反応は別途「情報・フラグ」へ記録してください。イベントを完了しても重要情報が無条件取得されることはありません。</p>';
+root.innerHTML=title("EVENT BOARD","イベント管理","候補は発生目安。GMの判断で開始・完了・省略を切り替えます。")+'<div class="board"><h2>現在の発生候補　'+count(D.events,canStart)+'</h2><div class="grid3">'+D.events.filter(canStart).map(e=>'<div class="item"><strong>'+clip(e.title)+'</strong>'+cue(e)+'<div class="actions">'+btn("本文","openEvent",e.id,"tiny")+btn("開始","setEvent",e.id+"::進行中","tiny")+'</div></div>').join("")+'</div></div><div class="status-columns">'+groups.map(([st,label])=>'<div class="status-column"><h3>'+label+'　'+count(D.events,e=>statusEvt(e.id)===st)+'</h3>'+D.events.filter(e=>statusEvt(e.id)===st).map(e=>'<div class="item"><span class="eyebrow">'+clip(e.phase)+'</span><h3>'+clip(e.title)+'</h3>'+cue(e)+(canStart(e)?pill("候補"):"")+'<div class="actions">'+btn("本文","openEvent",e.id,"tiny")+(st!=="進行中"?btn("開始","setEvent",e.id+"::進行中","tiny"):"")+(st!=="完了"?btn("完了","setEvent",e.id+"::完了","tiny"):"")+(st!=="スキップ"?btn("省略","setEvent",e.id+"::スキップ","tiny"):"")+'</div></div>').join("")+'</div>').join("")+'</div><p class="footer-note">チャレンジの成否、実際の証言やNPCの反応は別途「情報・フラグ」へ記録してください。イベントを完了しても重要情報が無条件取得されることはありません。</p>';
 }
 function renderClues(){
 root.innerHTML=title("INFORMATION & FLAGS","情報・フラグ","手掛かり取得と世界の状態を分けて記録。候補ロケーションは自動表示できます。")+'<div class="grid2"><div class="board"><h2>取得した情報　'+count(D.clues,c=>!!S.clues[c.id])+' / '+D.clues.length+'</h2>'+D.clues.map(c=>'<div class="item" style="margin:7px 0"><label class="checkbox-line"><input type="checkbox" data-action="toggleClue" data-value="'+c.id+'" '+(S.clues[c.id]?"checked":"")+'><span><strong>'+clip(c.title)+'</strong><br><span class="smalltext muted">'+clip(c.source)+'</span></span></label>'+ (S.clues[c.id]&&c.leads.length?'<div class="chips">'+c.leads.map(id=>chip(loc(id).name,"Loc",id)).join("")+'</div>':"")+'</div>').join("")+'</div><div class="board"><h2>状況フラグ</h2>'+D.flags.map(f=>'<div class="control-row"><label class="control">'+clip(f.label)+select(f.options,getFlag(f.id),"setFlag",f.id)+'</label></div>').join("")+'</div></div>';
@@ -78,7 +96,7 @@ function doAction(name,value,target){
  if(name==="openEvent"){currentEvent=value;navigate("story");return}
  if(name==="openLoc"){currentLocation=value;navigate("locations");return}
  if(name==="openNpc"){currentNPC=value;navigate("npcs");return}
- if(name==="filterStory"){filter=target.value;renderStory();return}
+ if(name==="filterStory"){filter=target.value;const pos=target.selectionStart;renderStory();const input=root.querySelector('input[data-action="filterStory"]');if(input){input.focus();input.setSelectionRange(pos,pos)}return}
  if(name==="export"){exportJson();return}
  if(name==="import"){document.getElementById("importFile").click();return}
  if(name==="newSession"){const title=prompt("新しいセッション名","セッション"+(sessions().length+1));if(!title)return;let a=sessions();session="s"+Date.now();a.push({id:session,title:title.slice(0,70)});localStorage.setItem(NS+"-sessions",JSON.stringify(a));S=fresh();S.title=title.slice(0,70);save();render();return}
@@ -100,7 +118,7 @@ function doAction(name,value,target){
 }
 document.addEventListener("click",e=>{let t=e.target.closest("button[data-action]");if(t)doAction(t.dataset.action,t.dataset.value||"",t)});
 document.addEventListener("change",e=>{let t=e.target;if(t.matches("select[data-action],input[data-action],textarea[data-action]"))doAction(t.dataset.action,t.dataset.value||"",t)});
-document.addEventListener("input",e=>{let t=e.target;if(t.dataset.action==="filterStory"){filter=t.value;renderStory()}else if(["setNpcNote","setNotes"].includes(t.dataset.action))doAction(t.dataset.action,t.dataset.value||"",t)});
+document.addEventListener("input",e=>{let t=e.target;if(t.dataset.action==="filterStory"){doAction("filterStory","",t)}else if(["setNpcNote","setNotes"].includes(t.dataset.action))doAction(t.dataset.action,t.dataset.value||"",t)});
 sessionSelect.addEventListener("change",()=>{session=sessionSelect.value;S=load();render();});
 document.getElementById("importFile").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;try{let raw=JSON.parse(await file.text());if(raw.format!=="DLH-PALME-SESSION"||raw.session?.version!==1)throw Error("対応外の形式です");if(!confirm("現在の進行記録をインポート内容で上書きしますか？"))return;S=Object.assign(fresh(),raw.session);save();render();flash("復元しました")}catch(err){alert("読込失敗："+err.message)}finally{e.target.value=""}});
 render();
